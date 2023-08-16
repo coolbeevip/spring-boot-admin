@@ -16,6 +16,7 @@
 
 import '@/assets/css/base.scss';
 import i18n from './i18n'
+import {encryption} from '@/utils/encryption';
 
 document.querySelectorAll('[data-i18n]')
   .forEach(t => {
@@ -31,3 +32,22 @@ document.querySelectorAll('[data-i18n]')
       t.innerHTML = i18n.t(key);
     }
   });
+
+document.getElementById('login_form_submit')
+    .addEventListener('click', function () {
+        const form = this.form;
+        const username = form.username.value;
+        const password = form.password.value;
+        if(username != '' && password != '') {
+            const userInfo = {
+                password: password
+            };
+            const encryptedData = encryption({
+                data: userInfo,
+                key: 'ncncncncncncncnc',
+                param: ['password']
+            })
+            form.password.value = encryptedData.password;
+        }
+        form.submit();
+    });
