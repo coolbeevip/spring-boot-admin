@@ -20,6 +20,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import org.springframework.http.client.reactive.ClientHttpConnector;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -27,6 +32,9 @@ import reactor.core.publisher.Mono;
 
 import de.codecentric.boot.admin.server.domain.entities.Instance;
 import de.codecentric.boot.admin.server.web.client.exception.ResolveInstanceException;
+import reactor.netty.http.client.HttpClient;
+
+import javax.net.ssl.SSLException;
 
 public class InstanceWebClient {
 
@@ -108,7 +116,19 @@ public class InstanceWebClient {
 		public InstanceWebClient build() {
 			this.filters.stream().map(InstanceWebClient::toExchangeFilterFunction)
 					.forEach(this.webClientBuilder::filter);
-			return new InstanceWebClient(this.webClientBuilder.build());
+			try {
+				SslContext sslContext = SslContextBuilder
+						.forClient()
+						.trustManager(InsecureTrustManagerFactory.INSTANCE)
+						.build();
+				HttpClient httpClient = HttpClient.create().secure(sslSpec -> sslSpec.sslContext(sslContext));
+				ClientHttpConnector clientHttpConnector = new ReactorClientHttpConnector(httpClient);
+				return new InstanceWebClient(this.webClientBuilder
+						.clientConnector(clientHttpConnector)
+						.build());
+			} catch (SSLException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 	}
